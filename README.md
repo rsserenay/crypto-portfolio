@@ -34,7 +34,7 @@ lib/
 
 ## Sırada ne var? (Sonraki adım için)
 - `GetStorage` kutusunu ilk kullanımdan önce native tarafta initialize etmek için
-  Android/iOS proje dosyalarının (android/, ios/) `flutter create .` ile
+  Android proje dosyalarının  `flutter create .` ile
   üretilmesi gerekiyor (bu adım Flutter SDK gerektirir, bu ortamda çalıştırılamadı).
 - İstersen: satılan coin'i azaltma/satma özelliği, boş arama sonucu için
   "temizle" butonu, veya toplam kâr/zarar (P&L) hesaplaması ekleyebilirim.

@@ -2,13 +2,13 @@ import 'dart:async';
 import 'package:get/get.dart';
 import '../models/coin_model.dart';
 import '../services/coin_api_service.dart';
+import 'package:flutter/material.dart';
 
 enum SortType { none, gainers, losers }
 
 /// Market ekranının TÜM iş mantığı burada yaşar (Sıfır setState kuralı).
 /// View sadece Obx ile bu controller'ı dinler.
 class MarketController extends GetxController {
-  
   final CoinApiService _apiService = CoinApiService();
 
   final RxList<CoinModel> allCoins = <CoinModel>[].obs;
@@ -18,12 +18,13 @@ class MarketController extends GetxController {
 
   final RxBool isLoading = false.obs;
   final RxBool isRefreshing = false.obs; // pull-to-refresh göstergesi
-  
+
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
 
   final RxString searchQuery = ''.obs;
   final Rx<SortType> activeSort = SortType.none.obs;
+  final TextEditingController searchController = TextEditingController();
 
   Timer? _debounceTimer;
   Timer? _autoRefreshTimer;
@@ -44,6 +45,7 @@ class MarketController extends GetxController {
     // arka planda çalışmaya devam edip belleği/network'ü şişirir.
     _debounceTimer?.cancel();
     _autoRefreshTimer?.cancel();
+    searchController.dispose();
     super.onClose();
   }
 
@@ -54,38 +56,39 @@ class MarketController extends GetxController {
   }
 
   Future<void> fetchCoins({bool silent = false}) async {
-  try {
-    if (!silent) {
-      isLoading.value = true;
-    }
+    try {
+      if (!silent) {
+        isLoading.value = true;
+      }
 
-    hasError.value = false;
-    errorMessage.value = '';
+      hasError.value = false;
+      errorMessage.value = '';
 
-    final coins = await _apiService.fetchMarkets();
+      final coins = await _apiService.fetchMarkets();
 
-    allCoins.assignAll(coins);
-    _applyFilterAndSort();
-  } catch (e) {
-    hasError.value = true;
-    errorMessage.value = 'Piyasa verileri alınamadı.';
+      allCoins.assignAll(coins);
+      _applyFilterAndSort();
+    } catch (e) {
+      hasError.value = true;
+      errorMessage.value = 'Piyasa verileri alınamadı.';
 
-    if (!silent) {
-      Get.snackbar(
-        'Bağlantı Hatası',
-        'Veriler alınamadı. Lütfen tekrar deneyin.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  } finally {
-    if (!silent) {
-      isLoading.value = false;
+      if (!silent) {
+        Get.snackbar(
+          'Bağlantı Hatası',
+          'Veriler alınamadı. Lütfen tekrar deneyin.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } finally {
+      if (!silent) {
+        isLoading.value = false;
+      }
     }
   }
-}
-Future<void> retryFetch() async {
-  await fetchCoins();
-}
+
+  Future<void> retryFetch() async {
+    await fetchCoins();
+  }
 
   /// RefreshIndicator tarafından çağrılır (manuel pull-to-refresh)
   Future<void> onPullToRefresh() async {
@@ -130,16 +133,16 @@ Future<void> retryFetch() async {
               coin.name.toLowerCase().contains(q) ||
               coin.symbol.toLowerCase().contains(q))
           .toList();
-    } 
+    }
 
     switch (activeSort.value) {
       case SortType.gainers:
-        result.sort((a, b) => b.priceChangePercentage24h
-            .compareTo(a.priceChangePercentage24h));
+        result.sort((a, b) =>
+            b.priceChangePercentage24h.compareTo(a.priceChangePercentage24h));
         break;
       case SortType.losers:
-        result.sort((a, b) => a.priceChangePercentage24h
-            .compareTo(b.priceChangePercentage24h));
+        result.sort((a, b) =>
+            a.priceChangePercentage24h.compareTo(b.priceChangePercentage24h));
         break;
       case SortType.none:
         break;
@@ -147,10 +150,11 @@ Future<void> retryFetch() async {
 
     displayedCoins.assignAll(result);
   }
-  void clearSearch() {
-  _debounceTimer?.cancel();
-  searchQuery.value = '';
-  _applyFilterAndSort();
-}
 
+  void clearSearch() {
+    _debounceTimer?.cancel();
+    searchController.clear();
+    searchQuery.value = '';
+    _applyFilterAndSort();
+  }
 }

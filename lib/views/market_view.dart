@@ -5,25 +5,11 @@ import '../controllers/portfolio_controller.dart';
 import 'widgets/coin_tile.dart';
 import 'widgets/buy_sheet.dart';
 
-class MarketView extends StatefulWidget {
+class MarketView extends StatelessWidget {
   const MarketView({super.key});
 
   @override
-  State<MarketView> createState() => _MarketViewState();
-}
-
-class _MarketViewState extends State<MarketView> {
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-
     final MarketController controller = Get.find<MarketController>();
 
     return Scaffold(
@@ -33,28 +19,25 @@ class _MarketViewState extends State<MarketView> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Obx(
-  () => TextField(
-    controller: _searchController,
-    onChanged: controller.onSearchChanged,
-    decoration: InputDecoration(
-      hintText: 'Coin ara (örn: bitcoin, btc)',
-      prefixIcon: const Icon(Icons.search),
-      suffixIcon: controller.searchQuery.value.isNotEmpty
-          ? IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _searchController.clear();
-                controller.clearSearch();
-              },
-            )
-          : null,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      isDense: true,
-    ),
-  ),
-),
+              () => TextField(
+                controller: controller.searchController,
+                onChanged: controller.onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Coin ara (örn: bitcoin, btc)',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: controller.searchQuery.value.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: controller.clearSearch,
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  isDense: true,
+                ),
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -85,47 +68,47 @@ class _MarketViewState extends State<MarketView> {
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
-  return const Center(
-    child: CircularProgressIndicator(),
-  );
-}
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
 
-if (controller.hasError.value) {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(
-          Icons.cloud_off,
-          size: 48,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          controller.errorMessage.value,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: controller.retryFetch,
-          child: const Text('Tekrar Dene'),
-        ),
-      ],
-    ),
-  );
-}
+              if (controller.hasError.value) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.cloud_off,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        controller.errorMessage.value,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: controller.retryFetch,
+                        child: const Text('Tekrar Dene'),
+                      ),
+                    ],
+                  ),
+                );
+              }
 
-if (controller.displayedCoins.isEmpty) {
-  final query = controller.searchQuery.value;
+              if (controller.displayedCoins.isEmpty) {
+                final query = controller.searchQuery.value;
 
-  return Center(
-    child: Text(
-      query.isEmpty
-          ? 'Sonuç bulunamadı'
-          : '"$query" için sonuç bulunamadı',
-    ),
-  );
-}
-              
+                return Center(
+                  child: Text(
+                    query.isEmpty
+                        ? 'Sonuç bulunamadı'
+                        : '"$query" için sonuç bulunamadı',
+                  ),
+                );
+              }
+
               return RefreshIndicator(
                 onRefresh: controller.onPullToRefresh,
                 child: ListView.separated(
@@ -144,8 +127,8 @@ if (controller.displayedCoins.isEmpty) {
                           backgroundColor: Colors.white,
                           isScrollControlled: true,
                           shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(16)),
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(16)),
                           ),
                         );
                       },
