@@ -8,6 +8,7 @@ enum SortType { none, gainers, losers }
 /// Market ekranının TÜM iş mantığı burada yaşar (Sıfır setState kuralı).
 /// View sadece Obx ile bu controller'ı dinler.
 class MarketController extends GetxController {
+  
   final CoinApiService _apiService = CoinApiService();
 
   final RxList<CoinModel> allCoins = <CoinModel>[].obs;
@@ -17,6 +18,10 @@ class MarketController extends GetxController {
 
   final RxBool isLoading = false.obs;
   final RxBool isRefreshing = false.obs; // pull-to-refresh göstergesi
+  
+  final RxBool hasError = false.obs;
+  final RxString errorMessage = ''.obs;
+
   final RxString searchQuery = ''.obs;
   final Rx<SortType> activeSort = SortType.none.obs;
 
@@ -48,24 +53,39 @@ class MarketController extends GetxController {
     });
   }
 
-  /// silent: true -> kullanıcıya loading spinner göstermeden arka planda günceller
   Future<void> fetchCoins({bool silent = false}) async {
-    try {
-      if (!silent) isLoading.value = true;
-      final coins = await _apiService.fetchMarkets();
+  try {
+    if (!silent) {
+      isLoading.value = true;
+    }
+
+    hasError.value = false;
+    errorMessage.value = '';
+
+    final coins = await _apiService.fetchMarkets();
 
     allCoins.assignAll(coins);
+    _applyFilterAndSort();
+  } catch (e) {
+    hasError.value = true;
+    errorMessage.value = 'Piyasa verileri alınamadı.';
 
-      _applyFilterAndSort();
-    } catch (e) {
-      if (!silent) {
-        Get.snackbar('Hata', 'Veri çekilemedi: $e',
-            snackPosition: SnackPosition.BOTTOM);
-      }
-    } finally {
-      if (!silent) isLoading.value = false;
+    if (!silent) {
+      Get.snackbar(
+        'Bağlantı Hatası',
+        'Veriler alınamadı. Lütfen tekrar deneyin.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  } finally {
+    if (!silent) {
+      isLoading.value = false;
     }
   }
+}
+Future<void> retryFetch() async {
+  await fetchCoins();
+}
 
   /// RefreshIndicator tarafından çağrılır (manuel pull-to-refresh)
   Future<void> onPullToRefresh() async {
@@ -110,9 +130,7 @@ class MarketController extends GetxController {
               coin.name.toLowerCase().contains(q) ||
               coin.symbol.toLowerCase().contains(q))
           .toList();
-    } else {
-      result = List<CoinModel>.from(result);
-    }
+    } 
 
     switch (activeSort.value) {
       case SortType.gainers:

@@ -59,11 +59,41 @@ class MarketView extends StatelessWidget {
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (controller.displayedCoins.isEmpty) {
-                return const Center(child: Text('Sonuç bulunamadı'));
-              }
+  return const Center(
+    child: CircularProgressIndicator(),
+  );
+}
+
+if (controller.hasError.value) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.cloud_off,
+          size: 48,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          controller.errorMessage.value,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: controller.retryFetch,
+          child: const Text('Tekrar Dene'),
+        ),
+      ],
+    ),
+  );
+}
+
+if (controller.displayedCoins.isEmpty) {
+  return const Center(
+    child: Text('Sonuç bulunamadı'),
+  );
+}
+              
               return RefreshIndicator(
                 onRefresh: controller.onPullToRefresh,
                 child: ListView.separated(
