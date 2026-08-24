@@ -147,4 +147,10 @@ Future<void> retryFetch() async {
 
     displayedCoins.assignAll(result);
   }
+  void clearSearch() {
+  _debounceTimer?.cancel();
+  searchQuery.value = '';
+  _applyFilterAndSort();
+}
+
 }
