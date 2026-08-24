@@ -10,8 +10,7 @@ enum SortType { none, gainers, losers }
 class MarketController extends GetxController {
   final CoinApiService _apiService = CoinApiService();
 
-  // API'den gelen ham/tam liste (100 coin) - filtre/sort bunun üzerinden yapılır
-  final List<CoinModel> _allCoins = [];
+  final RxList<CoinModel> allCoins = <CoinModel>[].obs;
 
   // Ekranda gösterilen (filtrelenmiş + sıralanmış) liste
   final RxList<CoinModel> displayedCoins = <CoinModel>[].obs;
@@ -55,9 +54,7 @@ class MarketController extends GetxController {
       if (!silent) isLoading.value = true;
       final coins = await _apiService.fetchMarkets();
 
-      _allCoins
-        ..clear()
-        ..addAll(coins);
+    allCoins.assignAll(coins);
 
       _applyFilterAndSort();
     } catch (e) {
@@ -104,7 +101,7 @@ class MarketController extends GetxController {
 
   /// Elde bulunan 100 coinlik listeyi Dart tarafında filtreler ve sıralar.
   void _applyFilterAndSort() {
-    List<CoinModel> result = _allCoins;
+    List<CoinModel> result = allCoins.toList();
 
     if (searchQuery.value.isNotEmpty) {
       final q = searchQuery.value.toLowerCase();

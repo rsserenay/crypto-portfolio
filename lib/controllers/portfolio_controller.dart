@@ -1,8 +1,7 @@
-import 'dart:async';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../models/coin_model.dart';
-import '../services/coin_api_service.dart';
+import 'market_controller.dart';
 
 /// Cüzdanda görünecek tek satır: coin bilgisi + kullanıcının sahip olduğu miktar + o anki USD değeri
 class PortfolioItem {
@@ -17,7 +16,6 @@ class PortfolioItem {
 /// GetStorage'daki (miktar) veri ile API'den gelen (anlık fiyat) veri
 /// burada ID bazlı eşleştirilir. View sadece sonucu Obx ile basar.
 class PortfolioController extends GetxController {
-  final CoinApiService _apiService = CoinApiService();
   final GetStorage _box = GetStorage();
 
   static const String _storageKey = 'portfolio_holdings'; // {"bitcoin": 0.5, ...}
@@ -30,33 +28,27 @@ class PortfolioController extends GetxController {
 
   // View'in gösterdiği nihai kombinasyon: sadece elde bulunan coinler + değerleri
   final RxList<PortfolioItem> portfolioItems = <PortfolioItem>[].obs;
-
+  final MarketController _marketController = Get.find<MarketController>();
   final RxDouble totalBalanceUsd = 0.0.obs;
   final RxBool isLoading = false.obs;
   final RxBool isRefreshing = false.obs;
 
-  Timer? _autoRefreshTimer;
-  static const Duration _autoRefreshDuration = Duration(seconds: 30);
 
   @override
-  void onInit() {
-    super.onInit();
-    _loadHoldingsFromStorage();
-    fetchPrices();
-    _startAutoRefresh();
-  }
+void onInit() {
+  super.onInit();
 
-  @override
-  void onClose() {
-    _autoRefreshTimer?.cancel();
-    super.onClose();
-  }
+  _loadHoldingsFromStorage();
 
-  void _startAutoRefresh() {
-    _autoRefreshTimer = Timer.periodic(_autoRefreshDuration, (_) {
-      fetchPrices(silent: true);
-    });
-  }
+  ever<List<CoinModel>>(
+    _marketController.allCoins,
+    (_) => _updatePricesFromMarket(),
+  );
+
+  _updatePricesFromMarket();
+}
+
+
 
   void _loadHoldingsFromStorage() {
     final Map<String, dynamic>? raw = _box.read(_storageKey);
@@ -68,30 +60,19 @@ class PortfolioController extends GetxController {
     }
   }
 
-  Future<void> fetchPrices({bool silent = false}) async {
-    try {
-      if (!silent) isLoading.value = true;
-      final coins = await _apiService.fetchMarkets();
+  void _updatePricesFromMarket() {
+  _priceMap.clear();
 
-      _priceMap.clear();
-      for (final coin in coins) {
-        _priceMap[coin.id] = coin;
-      }
-
-      _recomputePortfolio();
-    } catch (e) {
-      if (!silent) {
-        Get.snackbar('Hata', 'Fiyatlar güncellenemedi: $e',
-            snackPosition: SnackPosition.BOTTOM);
-      }
-    } finally {
-      if (!silent) isLoading.value = false;
-    }
+  for (final coin in _marketController.allCoins) {
+    _priceMap[coin.id] = coin;
   }
+
+  _recomputePortfolio();
+}
 
   Future<void> onPullToRefresh() async {
     isRefreshing.value = true;
-    await fetchPrices(silent: true);
+    await _marketController.fetchCoins(silent: true);
     isRefreshing.value = false;
   }
 
