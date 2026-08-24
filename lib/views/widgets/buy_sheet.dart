@@ -37,9 +37,8 @@ class BuySheet extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                backgroundImage: coin.image.isNotEmpty
-                    ? NetworkImage(coin.image)
-                    : null,
+                backgroundImage:
+                    coin.image.isNotEmpty ? NetworkImage(coin.image) : null,
               ),
               const SizedBox(width: 12),
               Text(
@@ -85,12 +84,13 @@ class BuySheet extends StatelessWidget {
                   );
                   return;
                 }
-
                 if (isSelling) {
-                  portfolioController.sellCoin(
+                  final success = portfolioController.sellCoin(
                     coin.id,
                     amount,
                   );
+
+                  if (!success) return;
                 } else {
                   portfolioController.buyCoin(
                     coin.id,

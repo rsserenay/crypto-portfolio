@@ -165,43 +165,38 @@ class PortfolioController extends GetxController {
   ///
   /// Satış yapıldığında ortalama alış fiyatı değişmez.
   /// Miktar sıfıra ulaşırsa coin portföyden tamamen silinir.
-  void sellCoin(String coinId, double amount) {
-    if (amount <= 0) return;
+  bool sellCoin(String coinId, double amount) {
+  if (amount <= 0) return false;
 
-    final current = holdings[coinId];
+  final current = holdings[coinId]?.amount ?? 0.0;
 
-    if (current == null) {
-      Get.snackbar(
-        'Satış Hatası',
-        'Bu coinden portföyünüzde bulunmuyor.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    if (amount > current.amount) {
-      Get.snackbar(
-        'Satış Hatası',
-        'Sahip olduğunuz miktardan fazla satamazsınız.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    final updatedAmount = current.amount - amount;
-
-    if (updatedAmount <= 0) {
-      holdings.remove(coinId);
-    } else {
-      holdings[coinId] = PortfolioHolding(
-        amount: updatedAmount,
-        avgBuyPrice: current.avgBuyPrice,
-      );
-    }
-
-    _saveHoldings();
-    _recomputePortfolio();
+  if (amount > current) {
+    Get.snackbar(
+      'Satış Hatası',
+      'Sahip olduğunuz miktardan fazla satamazsınız.',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return false;
   }
+
+  final updated = current - amount;
+
+  if (updated <= 0) {
+    holdings.remove(coinId);
+  } else {
+    final holding = holdings[coinId]!;
+
+    holdings[coinId] = PortfolioHolding(
+      amount: updated,
+      avgBuyPrice: holding.avgBuyPrice,
+    );
+  }
+
+  _saveHoldings();
+  _recomputePortfolio();
+
+  return true;
+}
 
   /// GetStorage'a holdings verisini kaydeder.
   void _saveHoldings() {
