@@ -70,8 +70,6 @@ class BuySheet extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: SizedBox(
-              width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
                   final double? amount = double.tryParse(
@@ -116,7 +114,7 @@ class BuySheet extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          
         ],
       ),
     );

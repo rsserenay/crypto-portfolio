@@ -30,4 +30,19 @@ class CoinModel {
       marketCap: (json['market_cap'] ?? 0).toDouble(),
     );
   }
+  String get formattedMarketCap {
+    if (marketCap >= 1000000000) {
+      return '\$${(marketCap / 1000000000).toStringAsFixed(2)}B';
+    }
+
+    if (marketCap >= 1000000) {
+      return '\$${(marketCap / 1000000).toStringAsFixed(2)}M';
+    }
+
+    if (marketCap >= 1000) {
+      return '\$${(marketCap / 1000).toStringAsFixed(2)}K';
+    }
+
+    return '\$${marketCap.toStringAsFixed(0)}';
+  }
 }

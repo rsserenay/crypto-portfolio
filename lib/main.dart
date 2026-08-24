@@ -9,9 +9,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init('portfolio_box');
 
-  // Controller'lar uygulama boyunca yaşasın diye permanent: true ile put edildi.
-  // Böylece Market ve Portföy sekmeleri arasında geçiş yapılsa bile
-  // Timer'lar/state kaybolmaz, onClose sadece uygulama tamamen kapanırken tetiklenir.
+
   Get.put(MarketController(), permanent: true);
   Get.put(PortfolioController(), permanent: true);
 

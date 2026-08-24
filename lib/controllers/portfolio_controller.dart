@@ -49,19 +49,18 @@ class PortfolioController extends GetxController {
   final MarketController _marketController = Get.find<MarketController>();
 
   final RxDouble totalBalanceUsd = 0.0.obs;
-
   final RxDouble totalProfitUsd = 0.0.obs;
   final RxDouble totalInvestedUsd = 0.0.obs;
 
   double get totalProfitPercentage {
     if (totalInvestedUsd.value <= 0) return 0.0;
-
     return (totalProfitUsd.value / totalInvestedUsd.value) * 100;
   }
 
   final RxBool isLoading = false.obs;
-
   final RxBool isRefreshing = false.obs;
+
+  late final Worker _priceWorker;
 
   @override
   void onInit() {
@@ -69,7 +68,7 @@ class PortfolioController extends GetxController {
 
     _loadHoldingsFromStorage();
 
-    ever<List<CoinModel>>(
+    _priceWorker = ever<List<CoinModel>>(
       _marketController.allCoins,
       (_) => _updatePricesFromMarket(),
     );
@@ -121,79 +120,77 @@ class PortfolioController extends GetxController {
   ///  + Yeni miktar × Güncel fiyat)
   /// / Toplam miktar
   bool buyCoin(String coinId, double amount) {
-  if (amount <= 0) return false;
+    if (amount <= 0) return false;
 
-  final coin = _priceMap[coinId];
+    final coin = _priceMap[coinId];
 
-  // Fiyat henüz API'den gelmediyse satın alma yapılmaz.
-  if (coin == null) {
-    return false;
+    // Fiyat henüz API'den gelmediyse satın alma yapılmaz.
+    if (coin == null) {
+      return false;
+    }
+
+    final holding = holdings[coinId];
+
+    if (holding == null) {
+      holdings[coinId] = PortfolioHolding(
+        amount: amount,
+        avgBuyPrice: coin.currentPrice,
+      );
+    } else {
+      final oldAmount = holding.amount;
+      final oldAvgPrice = holding.avgBuyPrice;
+      final newAmount = oldAmount + amount;
+
+      final newAvgBuyPrice =
+          ((oldAmount * oldAvgPrice) + (amount * coin.currentPrice)) /
+              newAmount;
+
+      holdings[coinId] = PortfolioHolding(
+        amount: newAmount,
+        avgBuyPrice: newAvgBuyPrice,
+      );
+    }
+
+    _saveHoldings();
+    _recomputePortfolio();
+
+    return true;
   }
-
-  final holding = holdings[coinId];
-
-  if (holding == null) {
-    holdings[coinId] = PortfolioHolding(
-      amount: amount,
-      avgBuyPrice: coin.currentPrice,
-    );
-  } else {
-    final oldAmount = holding.amount;
-    final oldAvgPrice = holding.avgBuyPrice;
-    final newAmount = oldAmount + amount;
-
-    final newAvgBuyPrice =
-        ((oldAmount * oldAvgPrice) +
-                (amount * coin.currentPrice)) /
-            newAmount;
-
-    holdings[coinId] = PortfolioHolding(
-      amount: newAmount,
-      avgBuyPrice: newAvgBuyPrice,
-    );
-  }
-
-  _saveHoldings();
-  _recomputePortfolio();
-
-  return true;
-}
 
   /// Coin satışı.
   ///
   /// Satış yapıldığında ortalama alış fiyatı değişmez.
   /// Miktar sıfıra ulaşırsa coin portföyden tamamen silinir.
   bool sellCoin(String coinId, double amount) {
-  if (amount <= 0) return false;
+    if (amount <= 0) return false;
 
-  final holding = holdings[coinId];
+    final holding = holdings[coinId];
 
-  if (holding == null) return false;
+    if (holding == null) return false;
 
-  final current = holding.amount;
+    final current = holding.amount;
+    const double epsilon = 0.00000001;
 
-  const double epsilon = 0.00000001;
+    if (amount > current + epsilon) {
+      return false;
+    }
 
-  if (amount > current + epsilon) {
-    return false;
+    final updated = current - amount;
+
+    if (updated <= epsilon) {
+      holdings.remove(coinId);
+    } else {
+      holdings[coinId] = PortfolioHolding(
+        amount: updated,
+        avgBuyPrice: holding.avgBuyPrice,
+      );
+    }
+
+    _saveHoldings();
+    _recomputePortfolio();
+
+    return true;
   }
-
-  final updated = current - amount;
-
-  if (updated <= epsilon) {
-    holdings.remove(coinId);
-  } else {
-    holdings[coinId] = PortfolioHolding(
-      amount: updated,
-      avgBuyPrice: holding.avgBuyPrice,
-    );
-  }
-
-  _saveHoldings();
-  _recomputePortfolio();
-
-  return true;
-}
 
   /// GetStorage'a holdings verisini kaydeder.
   void _saveHoldings() {
@@ -243,10 +240,17 @@ class PortfolioController extends GetxController {
     totalInvestedUsd.value = totalInvested;
     totalProfitUsd.value = totalProfit;
   }
-  void deleteCoin(String coinId) {
-  holdings.remove(coinId);
 
-  _saveHoldings();
-  _recomputePortfolio();
-}
+  void deleteCoin(String coinId) {
+    holdings.remove(coinId);
+
+    _saveHoldings();
+    _recomputePortfolio();
+  }
+
+  @override
+  void onClose() {
+    _priceWorker.dispose();
+    super.onClose();
+  }
 }
