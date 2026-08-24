@@ -120,46 +120,44 @@ class PortfolioController extends GetxController {
   /// (Eski miktar × Eski ortalama fiyat
   ///  + Yeni miktar × Güncel fiyat)
   /// / Toplam miktar
-  void buyCoin(String coinId, double amount) {
-    if (amount <= 0) return;
+  bool buyCoin(String coinId, double amount) {
+  if (amount <= 0) return false;
 
-    final coin = _priceMap[coinId];
+  final coin = _priceMap[coinId];
 
-    if (coin == null) {
-      Get.snackbar(
-        'Hata',
-        'Coin fiyat bilgisi bulunamadı.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    final current = holdings[coinId];
-
-    if (current == null) {
-      holdings[coinId] = PortfolioHolding(
-        amount: amount,
-        avgBuyPrice: coin.currentPrice,
-      );
-    } else {
-      final oldAmount = current.amount;
-      final oldAvgPrice = current.avgBuyPrice;
-
-      final newAmount = oldAmount + amount;
-
-      final newAvgBuyPrice =
-          ((oldAmount * oldAvgPrice) + (amount * coin.currentPrice)) /
-              newAmount;
-
-      holdings[coinId] = PortfolioHolding(
-        amount: newAmount,
-        avgBuyPrice: newAvgBuyPrice,
-      );
-    }
-
-    _saveHoldings();
-    _recomputePortfolio();
+  // Fiyat henüz API'den gelmediyse satın alma yapılmaz.
+  if (coin == null) {
+    return false;
   }
+
+  final holding = holdings[coinId];
+
+  if (holding == null) {
+    holdings[coinId] = PortfolioHolding(
+      amount: amount,
+      avgBuyPrice: coin.currentPrice,
+    );
+  } else {
+    final oldAmount = holding.amount;
+    final oldAvgPrice = holding.avgBuyPrice;
+    final newAmount = oldAmount + amount;
+
+    final newAvgBuyPrice =
+        ((oldAmount * oldAvgPrice) +
+                (amount * coin.currentPrice)) /
+            newAmount;
+
+    holdings[coinId] = PortfolioHolding(
+      amount: newAmount,
+      avgBuyPrice: newAvgBuyPrice,
+    );
+  }
+
+  _saveHoldings();
+  _recomputePortfolio();
+
+  return true;
+}
 
   /// Coin satışı.
   ///
@@ -168,24 +166,23 @@ class PortfolioController extends GetxController {
   bool sellCoin(String coinId, double amount) {
   if (amount <= 0) return false;
 
-  final current = holdings[coinId]?.amount ?? 0.0;
+  final holding = holdings[coinId];
 
-  if (amount > current) {
-    Get.snackbar(
-      'Satış Hatası',
-      'Sahip olduğunuz miktardan fazla satamazsınız.',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+  if (holding == null) return false;
+
+  final current = holding.amount;
+
+  const double epsilon = 0.00000001;
+
+  if (amount > current + epsilon) {
     return false;
   }
 
   final updated = current - amount;
 
-  if (updated <= 0) {
+  if (updated <= epsilon) {
     holdings.remove(coinId);
   } else {
-    final holding = holdings[coinId]!;
-
     holdings[coinId] = PortfolioHolding(
       amount: updated,
       avgBuyPrice: holding.avgBuyPrice,

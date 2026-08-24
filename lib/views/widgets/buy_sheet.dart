@@ -70,48 +70,49 @@ class BuySheet extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                final double? amount = double.tryParse(
-                  amountController.text.replaceAll(',', '.'),
-                );
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  final double? amount = double.tryParse(
+                      amountController.text.replaceAll(',', '.'));
 
-                if (amount == null || amount <= 0) {
-                  Get.snackbar(
-                    'Hata',
-                    'Geçerli bir miktar girin',
-                    snackPosition: SnackPosition.BOTTOM,
-                  );
-                  return;
-                }
-                if (isSelling) {
-                  final success = portfolioController.sellCoin(
-                    coin.id,
-                    amount,
-                  );
+                  if (amount == null || amount <= 0) {
+                    Get.snackbar(
+                      'Hata',
+                      'Geçerli bir miktar girin',
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
+                    return;
+                  }
 
-                  if (!success) return;
-                } else {
-                  portfolioController.buyCoin(
-                    coin.id,
-                    amount,
-                  );
-                }
+                  final success = isSelling
+                      ? portfolioController.sellCoin(coin.id, amount)
+                      : portfolioController.buyCoin(coin.id, amount);
 
-                Get.back();
+                  if (success) {
+                    Get.back();
 
-                Get.snackbar(
-                  'Başarılı',
-                  isSelling
-                      ? '${coin.symbol} portföyden satıldı'
-                      : '${coin.symbol} portföyüne eklendi',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Text(
-                  isSelling ? 'Coin Sat' : 'Coin Satın Al',
+                    Get.snackbar(
+                      'Başarılı',
+                      isSelling
+                          ? '${coin.symbol} satıldı'
+                          : '${coin.symbol} portföyüne eklendi',
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
+                  } else {
+                    Get.snackbar(
+                      'Hata',
+                      isSelling
+                          ? 'Sahip olduğunuz miktardan fazla satamazsınız.'
+                          : 'Coin fiyat bilgisi henüz yüklenmedi.',
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Text(isSelling ? 'Coin Sat' : 'Coin Satın Al'),
                 ),
               ),
             ),
