@@ -102,9 +102,10 @@ class MarketView extends StatelessWidget {
 
                 return Center(
                   child: Text(
-                    query.isEmpty
-                        ? 'Sonuç bulunamadı'
-                        : '"$query" için sonuç bulunamadı',
+                    query.isNotEmpty
+                        ? '"$query" için sonuç bulunamadı'
+                        : 'Gösterilecek coin bulunamadı',
+                    textAlign: TextAlign.center,
                   ),
                 );
               }
