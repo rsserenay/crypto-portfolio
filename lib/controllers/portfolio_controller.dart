@@ -16,7 +16,7 @@ class PortfolioItem {
 /// GetStorage'daki (miktar) veri ile API'den gelen (anlık fiyat) veri
 /// burada ID bazlı eşleştirilir. View sadece sonucu Obx ile basar.
 class PortfolioController extends GetxController {
-  final GetStorage _box = GetStorage();
+  final GetStorage _box = GetStorage('portfolio_box');
 
   static const String _storageKey = 'portfolio_holdings'; // {"bitcoin": 0.5, ...}
 
@@ -92,6 +92,36 @@ void onInit() {
 
     _recomputePortfolio();
   }
+  void sellCoin(String coinId, double amount) {
+  if (amount <= 0) return;
+
+  final current = holdings[coinId] ?? 0.0;
+
+  if (amount > current) {
+    Get.snackbar(
+      'Satış Hatası',
+      'Sahip olduğunuz miktardan fazla satamazsınız.',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return;
+  }
+
+  final updated = current - amount;
+
+  if (updated <= 0) {
+    holdings.remove(coinId);
+  } else {
+    holdings[coinId] = updated;
+  }
+
+  final Map<String, dynamic> toSave = holdings.map(
+    (key, value) => MapEntry(key, value),
+  );
+
+  _box.write(_storageKey, toSave);
+
+  _recomputePortfolio();
+}
 
   /// GetStorage'daki "miktar" ile API'den gelen "anlık fiyat" verisini
   /// coin ID'sine göre eşleştirip (Miktar * Fiyat) toplam bakiyeyi hesaplar.

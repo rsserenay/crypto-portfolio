@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/portfolio_controller.dart';
+import 'widgets/buy_sheet.dart';
 
 class PortfolioView extends StatelessWidget {
   const PortfolioView({super.key});
@@ -47,14 +48,28 @@ class PortfolioView extends StatelessWidget {
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
+                      onTap: () {
+                        Get.bottomSheet(
+                          BuySheet(
+                            coin: item.coin,
+                            isSelling: true,
+                          ),
+                          backgroundColor: Colors.white,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                          ),
+                        );
+                      },
                       leading: CircleAvatar(
                         backgroundImage: item.coin.image.isNotEmpty
                             ? NetworkImage(item.coin.image)
                             : null,
                       ),
                       title: Text(item.coin.name),
-                      subtitle: Text(
-                          '${item.amount} ${item.coin.symbol}'),
+                      subtitle: Text('${item.amount} ${item.coin.symbol}'),
                       trailing: Text(
                         '\$${item.valueUsd.toStringAsFixed(2)}',
                         style: const TextStyle(fontWeight: FontWeight.bold),

@@ -7,7 +7,7 @@ import 'views/main_navigation.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init();
+  await GetStorage.init('portfolio_box');
 
   // Controller'lar uygulama boyunca yaşasın diye permanent: true ile put edildi.
   // Böylece Market ve Portföy sekmeleri arasında geçiş yapılsa bile
