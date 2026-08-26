@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'controllers/market_controller.dart';
 import 'controllers/portfolio_controller.dart';
+import 'theme/app_colors.dart';
 import 'views/main_navigation.dart';
 
 Future<void> main() async {
@@ -26,7 +27,23 @@ class KriptoPortfoyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.deepPurple,
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          primary: AppColors.primary,
+          secondary: AppColors.accentMint,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.primaryDark,
+          foregroundColor: AppColors.textOnDark,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.textOnDark,
+          ),
+        ),
       ),
       home: const MainNavigation(),
     );
