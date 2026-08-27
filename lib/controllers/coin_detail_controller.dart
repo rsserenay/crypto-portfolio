@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import '../models/coin_model.dart';
 import '../services/coin_api_service.dart';
+import 'favorites_controller.dart';
 import 'market_controller.dart';
 
 enum ChartTimeframe {
@@ -26,6 +27,8 @@ class CoinDetailController extends GetxController {
 
   final CoinApiService _apiService = CoinApiService();
   final MarketController _marketController = Get.find<MarketController>();
+  final FavoritesController favoritesController =
+      Get.find<FavoritesController>();
 
   final Rx<CoinModel?> coin = Rx<CoinModel?>(null);
   final RxList<CandleModel> candles = <CandleModel>[].obs;
@@ -79,7 +82,7 @@ class CoinDetailController extends GetxController {
   }
 
   void toggleFavorite() {
-    isFavorite.value = !isFavorite.value;
+    favoritesController.toggleFavorite(coinId);
   }
 
   Future<void> fetchCandles({bool silent = false}) async {

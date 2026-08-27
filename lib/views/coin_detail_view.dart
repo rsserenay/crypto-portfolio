@@ -50,15 +50,18 @@ class CoinDetailView extends StatelessWidget {
         }),
         actions: [
           Obx(
-            () => IconButton(
-              icon: Icon(
-                controller.isFavorite.value ? Icons.star : Icons.star_border,
-                color: controller.isFavorite.value
-                    ? AppColors.accentMint
-                    : AppColors.textOnDark,
-              ),
-              onPressed: controller.toggleFavorite,
-            ),
+            () {
+              final coin = controller.coin.value;
+              final isFav = coin != null &&
+                  controller.favoritesController.isFavorite(coin.id);
+              return IconButton(
+                icon: Icon(
+                  isFav ? Icons.star : Icons.star_border,
+                  color: isFav ? AppColors.accentMint : AppColors.textOnDark,
+                ),
+                onPressed: controller.toggleFavorite,
+              );
+            },
           ),
         ],
       ),
@@ -159,30 +162,76 @@ class CoinDetailView extends StatelessWidget {
 
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentMint,
-                    foregroundColor: AppColors.textPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: () {
-                    Get.find<PortfolioController>();
-                    Get.bottomSheet(
-                      BuySheet(coin: coin),
-                      backgroundColor: AppColors.surface,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(16)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentMint,
+                          foregroundColor: AppColors.textPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () {
+                          Get.find<PortfolioController>();
+                          Get.bottomSheet(
+                            BuySheet(coin: coin),
+                            backgroundColor: AppColors.surface,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                            ),
+                          );
+                        },
+                        child: const Text('Satın Al',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
-                    );
-                  },
-                  child: Text('${coin.name} Satın Al',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                    Obx(() {
+                      final portfolioController = Get.find<PortfolioController>();
+                      final owns = portfolioController.portfolioItems
+                          .any((item) => item.coin.id == coin.id);
+                      if (!owns) return const SizedBox.shrink();
+                      return Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.negative,
+                                side: const BorderSide(
+                                    color: AppColors.negative),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: () {
+                                Get.bottomSheet(
+                                  BuySheet(coin: coin, isSelling: true),
+                                  backgroundColor: AppColors.surface,
+                                  isScrollControlled: true,
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(16)),
+                                  ),
+                                );
+                              },
+                              child: const Text('Sat',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ],
                 ),
               ),
             ],
