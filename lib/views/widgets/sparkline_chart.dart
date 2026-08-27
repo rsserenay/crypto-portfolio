@@ -23,14 +23,25 @@ class SparklineChart extends StatelessWidget {
     if (data.length < 2) {
       return const SizedBox.shrink();
     }
-    return CustomPaint(
-      painter: _SparklinePainter(
-        data: data,
-        lineColor: lineColor,
-        strokeWidth: strokeWidth,
-        filled: filled,
-      ),
-      size: Size.infinite,
+    // Size.infinite yerine LayoutBuilder ile gerçek/sonlu boyutu alıyoruz.
+    // Sınırsız boyut talebi bazı cihazlarda native render çökmesine yol açabiliyor.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 60.0;
+        final double height =
+            constraints.maxHeight.isFinite ? constraints.maxHeight : 30.0;
+
+        return CustomPaint(
+          painter: _SparklinePainter(
+            data: data,
+            lineColor: lineColor,
+            strokeWidth: strokeWidth,
+            filled: filled,
+          ),
+          size: Size(width, height),
+        );
+      },
     );
   }
 }
@@ -50,17 +61,28 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (data.length < 2 ||
+        size.width <= 0 ||
+        size.height <= 0 ||
+        size.width.isNaN ||
+        size.height.isNaN) {
+      return;
+    }
+
     final double minValue = data.reduce((a, b) => a < b ? a : b);
     final double maxValue = data.reduce((a, b) => a > b ? a : b);
-    final double range = (maxValue - minValue) == 0 ? 1 : (maxValue - minValue);
+    final double rawRange = maxValue - minValue;
+    final double range = (rawRange == 0 || rawRange.isNaN) ? 1 : rawRange;
 
     final double stepX = size.width / (data.length - 1);
+    if (stepX.isNaN) return;
 
     final path = Path();
     for (int i = 0; i < data.length; i++) {
       final double x = i * stepX;
       final double normalized = (data[i] - minValue) / range;
-      final double y = size.height - (normalized * size.height);
+      final double clamped = normalized.isNaN ? 0 : normalized.clamp(0.0, 1.0);
+      final double y = size.height - (clamped * size.height);
       if (i == 0) {
         path.moveTo(x, y);
       } else {
@@ -77,7 +99,10 @@ class _SparklinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [lineColor.withValues(alpha: 0.25), lineColor.withValues(alpha: 0.0)],
+          colors: [
+            lineColor.withValues(alpha: 0.25),
+            lineColor.withValues(alpha: 0.0),
+          ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
       canvas.drawPath(fillPath, fillPaint);
     }

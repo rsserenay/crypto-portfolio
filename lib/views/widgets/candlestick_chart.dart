@@ -20,9 +20,21 @@ class CandlestickChart extends StatelessWidget {
         ),
       );
     }
-    return CustomPaint(
-      painter: _CandlestickPainter(candles: candles),
-      size: Size.infinite,
+    // Size.infinite yerine LayoutBuilder ile gerçek/sonlu boyutu alıyoruz.
+    // Bazı cihaz/emulator'lerde sınırsız (infinite) boyut talebi native
+    // render motorunda geçersiz bir tuval isteğine ve çökmeye yol açabiliyor.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 320.0;
+        final double height =
+            constraints.maxHeight.isFinite ? constraints.maxHeight : 220.0;
+
+        return CustomPaint(
+          painter: _CandlestickPainter(candles: candles),
+          size: Size(width, height),
+        );
+      },
     );
   }
 }
@@ -34,18 +46,31 @@ class _CandlestickPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Güvenlik: sıfır/negatif/NaN boyutta hiçbir şey çizme.
+    if (candles.isEmpty ||
+        size.width <= 0 ||
+        size.height <= 0 ||
+        size.width.isNaN ||
+        size.height.isNaN) {
+      return;
+    }
+
     final double maxHigh =
         candles.map((c) => c.high).reduce((a, b) => a > b ? a : b);
     final double minLow =
         candles.map((c) => c.low).reduce((a, b) => a < b ? a : b);
-    final double range = (maxHigh - minLow) == 0 ? 1 : (maxHigh - minLow);
+    final double rawRange = maxHigh - minLow;
+    final double range = (rawRange == 0 || rawRange.isNaN) ? 1 : rawRange;
 
     final double slotWidth = size.width / candles.length;
+    if (slotWidth <= 0 || slotWidth.isNaN) return;
+
     final double candleWidth = (slotWidth * 0.6).clamp(1.5, 14.0);
 
     double yFor(double price) {
       final double normalized = (price - minLow) / range;
-      return size.height - (normalized * size.height);
+      final double clamped = normalized.isNaN ? 0 : normalized.clamp(0.0, 1.0);
+      return size.height - (clamped * size.height);
     }
 
     for (int i = 0; i < candles.length; i++) {
@@ -69,7 +94,8 @@ class _CandlestickPainter extends CustomPainter {
       final double closeY = yFor(candle.close);
       final double bodyTop = openY < closeY ? openY : closeY;
       final double bodyBottom = openY < closeY ? closeY : openY;
-      final double bodyHeight = (bodyBottom - bodyTop).clamp(1.5, double.infinity);
+      double bodyHeight = bodyBottom - bodyTop;
+      if (bodyHeight.isNaN || bodyHeight < 1.5) bodyHeight = 1.5;
 
       final bodyPaint = Paint()..color = color;
       canvas.drawRRect(
