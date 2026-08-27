@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../controllers/navigation_controller.dart';
 import '../theme/app_colors.dart';
 import 'market_view.dart';
 import 'portfolio_view.dart';
 
 /// Sadece iki sekme arasında geçiş yapan basit bir kabuk (shell) widget'ı.
-/// Aktif index bilgisi burada bir Rx ile tutulur; bu bir "index" UI durumudur,
-/// hesaplama/filtreleme/sort/timer gibi bir iş mantığı içermez.
+/// Aktif index bilgisi NavigationController'da tutulur; böylece başka
+/// ekranlardan (örn. favoriler kısayolu) da sekme değiştirilebilir.
 class MainNavigation extends StatelessWidget {
   const MainNavigation({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final RxInt currentIndex = 0.obs;
+    final NavigationController navController = Get.find<NavigationController>();
 
     const pages = [PortfolioView(), MarketView()];
 
@@ -20,7 +21,7 @@ class MainNavigation extends StatelessWidget {
       () => Scaffold(
         extendBody: true,
         body: IndexedStack(
-          index: currentIndex.value,
+          index: navController.currentIndex.value,
           children: pages,
         ),
         bottomNavigationBar: Padding(
@@ -43,14 +44,14 @@ class MainNavigation extends StatelessWidget {
                 _NavItem(
                   icon: Icons.home_rounded,
                   label: 'Home',
-                  selected: currentIndex.value == 0,
-                  onTap: () => currentIndex.value = 0,
+                  selected: navController.currentIndex.value == 0,
+                  onTap: () => navController.goToTab(0),
                 ),
                 _NavItem(
                   icon: Icons.show_chart_rounded,
                   label: 'Market',
-                  selected: currentIndex.value == 1,
-                  onTap: () => currentIndex.value = 1,
+                  selected: navController.currentIndex.value == 1,
+                  onTap: () => navController.goToTab(1),
                 ),
               ],
             ),
