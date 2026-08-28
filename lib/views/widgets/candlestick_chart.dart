@@ -20,9 +20,7 @@ class CandlestickChart extends StatelessWidget {
         ),
       );
     }
-    // Size.infinite yerine LayoutBuilder ile gerçek/sonlu boyutu alıyoruz.
-    // Bazı cihaz/emulator'lerde sınırsız (infinite) boyut talebi native
-    // render motorunda geçersiz bir tuval isteğine ve çökmeye yol açabiliyor.
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width =

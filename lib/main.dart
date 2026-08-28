@@ -13,8 +13,6 @@ Future<void> main() async {
   await GetStorage.init('portfolio_box');
   await GetStorage.init('favorites_box');
 
-  // Sıra önemli: MarketController FavoritesController'ı,
-  // PortfolioController da MarketController'ı Get.find ile arıyor.
   Get.put(NavigationController(), permanent: true);
   Get.put(FavoritesController(), permanent: true);
   Get.put(MarketController(), permanent: true);
@@ -22,6 +20,15 @@ Future<void> main() async {
 
   runApp(const KriptoPortfoyApp());
 }
+
+
+//parayla satın alma
+//satarsak kaçtan satıcaz
+//parayla da satabilelim
+//ne kadar almışız tarihte 
+//favoriler düzelt
+
+
 
 class KriptoPortfoyApp extends StatelessWidget {
   const KriptoPortfoyApp({super.key});

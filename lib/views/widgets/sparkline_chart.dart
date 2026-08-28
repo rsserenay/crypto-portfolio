@@ -23,8 +23,7 @@ class SparklineChart extends StatelessWidget {
     if (data.length < 2) {
       return const SizedBox.shrink();
     }
-    // Size.infinite yerine LayoutBuilder ile gerçek/sonlu boyutu alıyoruz.
-    // Sınırsız boyut talebi bazı cihazlarda native render çökmesine yol açabiliyor.
+   
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width =
