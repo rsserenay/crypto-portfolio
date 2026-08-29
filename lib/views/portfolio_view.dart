@@ -494,21 +494,20 @@ class _DonutChart extends StatelessWidget {
 class _DonutChartPainter extends CustomPainter {
   final List<double> ratios;
   final List<Color> colors;
-  final double strokeWidth;
+  static const double _strokeWidth = 20;
 
   _DonutChartPainter({
     required this.ratios,
     required this.colors,
-    this.strokeWidth = 20,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(
-      strokeWidth / 2,
-      strokeWidth / 2,
-      size.width - strokeWidth,
-      size.height - strokeWidth,
+      _strokeWidth / 2,
+      _strokeWidth / 2,
+      size.width - _strokeWidth,
+      size.height - _strokeWidth,
     );
 
     // Saat 12 yönünden (yukarıdan) başlayıp saat yönünde ilerliyoruz.
@@ -521,7 +520,7 @@ class _DonutChartPainter extends CustomPainter {
       final paint = Paint()
         ..color = colors[i % colors.length]
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
+        ..strokeWidth = _strokeWidth
         ..strokeCap = StrokeCap.butt;
 
       canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
