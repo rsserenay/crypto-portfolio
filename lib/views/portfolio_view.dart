@@ -188,6 +188,62 @@ class PortfolioView extends StatelessWidget {
                       );
                     }),
                   ),
+
+                  // --- PERFORMANS: en çok kazandıran / en çok kaybettiren coin ---
+                  Obx(() {
+                    if (controller.portfolioItems.isEmpty) {
+                      return const SliverToBoxAdapter(child: SizedBox.shrink());
+                    }
+                    return SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
+                            child: Text(
+                              'Performans',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary),
+                            ),
+                          ),
+                          _PerformanceHighlights(
+                            items: controller.portfolioItems,
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+
+                  // --- PORTFÖY DAĞILIMI: hangi coin toplamın yüzde kaçı ---
+                  Obx(() {
+                    if (controller.portfolioItems.isEmpty) {
+                      return const SliverToBoxAdapter(child: SizedBox.shrink());
+                    }
+                    return SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
+                            child: Text(
+                              'Portföy Dağılımı',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary),
+                            ),
+                          ),
+                          _AllocationSection(
+                            items: controller.portfolioItems,
+                            totalUsd: controller.totalBalanceUsd.value,
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
@@ -260,6 +316,282 @@ class PortfolioView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Portföydeki her coinin toplam bakiyeye oranını yığın çubuk (stacked bar)
+/// ve altında yüzdelik bir liste olarak gösterir. Harici bir grafik paketi
+/// kullanmadan, sade Flutter widget'larıyla yapılmıştır.
+class _AllocationSection extends StatelessWidget {
+  final List<PortfolioItem> items;
+  final double totalUsd;
+
+  const _AllocationSection({
+    required this.items,
+    required this.totalUsd,
+  });
+
+  // Coinleri ayırt etmek için sabit bir renk paleti.
+  // Coin sayısı palet uzunluğunu aşarsa baştan tekrar kullanılır.
+  static const List<Color> _palette = [
+    Color(0xFF7C4DFF),
+    Color(0xFF00BFA5),
+    Color(0xFFFF6D91),
+    Color(0xFFFFAB40),
+    Color(0xFF40C4FF),
+    Color(0xFFAED581),
+    Color(0xFFFF8A65),
+    Color(0xFFBA68C8),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (totalUsd <= 0 || items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // En büyük paydan en küçüğe doğru sırala.
+    final sorted = [...items]
+      ..sort((a, b) => b.valueUsd.compareTo(a.valueUsd));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Yığın çubuk: her coin, payı oranında bir segment kaplar.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                height: 14,
+                child: Row(
+                  children: List.generate(sorted.length, (i) {
+                    final ratio = sorted[i].valueUsd / totalUsd;
+                    return Expanded(
+                      // flex tam sayı olmalı; oranı 1000 üzerinden ölçekliyoruz.
+                      flex: (ratio * 1000).round().clamp(1, 1000),
+                      child: Container(
+                        color: _palette[i % _palette.length],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Coin bazlı yüzdelik liste.
+            ...List.generate(sorted.length, (i) {
+              final item = sorted[i];
+              final pct = (item.valueUsd / totalUsd) * 100;
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: i == sorted.length - 1 ? 0 : 10,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _palette[i % _palette.length],
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${item.coin.name} (${item.coin.symbol})',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '\$${item.valueUsd.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 48,
+                      child: Text(
+                        '${pct.toStringAsFixed(1)}%',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Portföydeki coinler arasında en yüksek kâr yüzdesine ve en yüksek
+/// zarar yüzdesine sahip olanları yan yana iki kart halinde gösterir.
+/// Tek bir coin varsa (karşılaştırma anlamsız olacağı için) yalnızca
+/// "En Çok Kazandıran" kartı gösterilir.
+class _PerformanceHighlights extends StatelessWidget {
+  final List<PortfolioItem> items;
+
+  const _PerformanceHighlights({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final sorted = [...items]
+      ..sort((a, b) => b.profitPercentage.compareTo(a.profitPercentage));
+
+    final best = sorted.first;
+    final worst = sorted.last;
+    final bool onlyOneHolding = items.length == 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: _PerformanceCard(
+              title: 'En Çok Kazandıran',
+              item: best,
+              icon: Icons.trending_up,
+              color: AppColors.positive,
+            ),
+          ),
+          if (!onlyOneHolding) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: _PerformanceCard(
+                title: 'En Çok Kaybettiren',
+                item: worst,
+                icon: Icons.trending_down,
+                color: AppColors.negative,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PerformanceCard extends StatelessWidget {
+  final String title;
+  final PortfolioItem item;
+  final IconData icon;
+  final Color color;
+
+  const _PerformanceCard({
+    required this.title,
+    required this.item,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isUp = item.profitUsd >= 0;
+
+    return GestureDetector(
+      onTap: () => Get.to(() => CoinDetailView(coinId: item.coin.id)),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: AppColors.chipUnselected,
+                  backgroundImage: item.coin.image.isNotEmpty
+                      ? NetworkImage(item.coin.image)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item.coin.symbol,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${isUp ? '+' : ''}${item.profitPercentage.toStringAsFixed(2)}%',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              '${isUp ? '+' : ''}\$${item.profitUsd.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

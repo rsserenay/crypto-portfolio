@@ -153,11 +153,15 @@ class _BuySheetState extends State<BuySheet> {
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      Text(
-                        '${_ownedAmount.toStringAsFixed(6)} ${widget.coin.symbol}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                      Flexible(
+                        child: Text(
+                          '${_ownedAmount.toStringAsFixed(6)} ${widget.coin.symbol}  '
+                          '(~\$${ownedValueUsd.toStringAsFixed(2)})',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ],
@@ -208,6 +212,23 @@ class _BuySheetState extends State<BuySheet> {
                 ],
               ),
             ),
+            if (_ownedAmount > 0) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _amountController.text = _mode == _BuyInputMode.currency
+                          ? ownedValueUsd.toStringAsFixed(2)
+                          : _ownedAmount.toStringAsFixed(8);
+                    });
+                  },
+                  icon: const Icon(Icons.select_all, size: 16),
+                  label: const Text('Tümünü Sat'),
+                ),
+              ),
+            ],
           ],
 
           const SizedBox(height: 16),
@@ -256,6 +277,22 @@ class _BuySheetState extends State<BuySheet> {
               prefixText: _mode == _BuyInputMode.currency ? '\$ ' : null,
             ),
           ),
+
+          // Sahip olunandan fazla satış girilirse anında uyar.
+          if (isSelling &&
+              _estimatedCoinAmount != null &&
+              _estimatedCoinAmount! > _ownedAmount + 0.00000001) ...[
+            const SizedBox(height: 8),
+            Text(
+              'En fazla ${_ownedAmount.toStringAsFixed(6)} ${widget.coin.symbol} '
+              '(~\$${ownedValueUsd.toStringAsFixed(2)}) satabilirsin.',
+              style: const TextStyle(
+                color: AppColors.negative,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
 
           if (_mode == _BuyInputMode.currency) ...[
             const SizedBox(height: 12),
