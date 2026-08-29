@@ -333,6 +333,12 @@ class _Header extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () {
+                  // Önce Market'teki filtreyi "Favoriler"e çeviriyoruz,
+                  // sonra Market sekmesine geçiyoruz. Böylece kullanıcı
+                  // doğrudan favori coinlerinin listesini görür.
+                  final marketController = Get.find<MarketController>();
+                  marketController.sortByFavorites();
+
                   final navController = Get.find<NavigationController>();
                   navController.goToTab(1);
                 },

@@ -36,7 +36,7 @@ class PortfolioController extends GetxController {
 
   static const String _storageKey = 'portfolio_holdings';
 
-  /// coinId -> sahip olunan miktar + ortalama alış fiyatı
+  /// coinId -> sahip olunan miktar + ortalama alış fiyatı + işlem geçmişi
   final RxMap<String, PortfolioHolding> holdings =
       <String, PortfolioHolding>{}.obs;
 
@@ -114,20 +114,41 @@ class PortfolioController extends GetxController {
 
   /// Coin satın alma.
   ///
+  /// [inputAmount]: kullanıcının girdiği değer.
+  /// [isCurrencyAmount] true ise [inputAmount] "kaç dolarlık/liralık"
+  /// alınacağını ifade eder (örn: 200 -> 200$'lık coin) ve coin adedi
+  /// güncel fiyata bölünerek hesaplanır. false ise [inputAmount]
+  /// doğrudan coin adedidir (örn: 0.5 BTC).
+  ///
   /// Yeni coin alındığında ortalama alış fiyatı:
   ///
   /// (Eski miktar × Eski ortalama fiyat
   ///  + Yeni miktar × Güncel fiyat)
   /// / Toplam miktar
-  bool buyCoin(String coinId, double amount) {
-    if (amount <= 0) return false;
+  bool buyCoin(
+    String coinId,
+    double inputAmount, {
+    bool isCurrencyAmount = false,
+  }) {
+    if (inputAmount <= 0) return false;
 
     final coin = _priceMap[coinId];
 
     // Fiyat henüz API'den gelmediyse satın alma yapılmaz.
-    if (coin == null) {
+    if (coin == null || coin.currentPrice <= 0) {
       return false;
     }
+
+    // Kullanıcı "200 dolarlık coin al" dediyse coin adedine çeviriyoruz.
+    final double amount =
+        isCurrencyAmount ? (inputAmount / coin.currentPrice) : inputAmount;
+
+    final CoinTransaction transaction = CoinTransaction(
+      type: 'buy',
+      amount: amount,
+      price: coin.currentPrice,
+      date: DateTime.now(),
+    );
 
     final holding = holdings[coinId];
 
@@ -135,6 +156,7 @@ class PortfolioController extends GetxController {
       holdings[coinId] = PortfolioHolding(
         amount: amount,
         avgBuyPrice: coin.currentPrice,
+        transactions: [transaction],
       );
     } else {
       final oldAmount = holding.amount;
@@ -148,6 +170,7 @@ class PortfolioController extends GetxController {
       holdings[coinId] = PortfolioHolding(
         amount: newAmount,
         avgBuyPrice: newAvgBuyPrice,
+        transactions: [...holding.transactions, transaction],
       );
     }
 
@@ -159,14 +182,28 @@ class PortfolioController extends GetxController {
 
   /// Coin satışı.
   ///
+  /// [isCurrencyAmount] true ise [inputAmount] "kaç dolarlık/liralık
+  /// satmak istediğini" ifade eder.
+  ///
   /// Satış yapıldığında ortalama alış fiyatı değişmez.
-  /// Miktar sıfıra ulaşırsa coin portföyden tamamen silinir.
-  bool sellCoin(String coinId, double amount) {
-    if (amount <= 0) return false;
+  /// Miktar sıfıra ulaşsa bile holding (ve işlem geçmişi) silinmez;
+  /// sadece amount 0 olur. Böylece coin detayında geçmiş görünmeye devam eder.
+  bool sellCoin(
+    String coinId,
+    double inputAmount, {
+    bool isCurrencyAmount = false,
+  }) {
+    if (inputAmount <= 0) return false;
 
     final holding = holdings[coinId];
 
     if (holding == null) return false;
+
+    final coin = _priceMap[coinId];
+    final double sellPrice = coin?.currentPrice ?? holding.avgBuyPrice;
+
+    final double amount =
+        isCurrencyAmount ? (inputAmount / sellPrice) : inputAmount;
 
     final current = holding.amount;
     const double epsilon = 0.00000001;
@@ -175,21 +212,32 @@ class PortfolioController extends GetxController {
       return false;
     }
 
-    final updated = current - amount;
+    final updatedAmount = current - amount;
 
-    if (updated <= epsilon) {
-      holdings.remove(coinId);
-    } else {
-      holdings[coinId] = PortfolioHolding(
-        amount: updated,
-        avgBuyPrice: holding.avgBuyPrice,
-      );
-    }
+    final CoinTransaction transaction = CoinTransaction(
+      type: 'sell',
+      amount: amount,
+      price: sellPrice,
+      date: DateTime.now(),
+    );
+
+    holdings[coinId] = PortfolioHolding(
+      amount: updatedAmount <= epsilon ? 0 : updatedAmount,
+      avgBuyPrice: holding.avgBuyPrice,
+      transactions: [...holding.transactions, transaction],
+    );
 
     _saveHoldings();
     _recomputePortfolio();
 
     return true;
+  }
+
+  /// Belirli bir coin için tüm işlem geçmişini (en yeni en üstte) döner.
+  List<CoinTransaction> transactionsFor(String coinId) {
+    final holding = holdings[coinId];
+    if (holding == null) return [];
+    return holding.transactions.reversed.toList();
   }
 
   /// GetStorage'a holdings verisini kaydeder.
@@ -241,6 +289,7 @@ class PortfolioController extends GetxController {
     totalProfitUsd.value = totalProfit;
   }
 
+  /// Coini işlem geçmişiyle birlikte tamamen siler (satış değil, sıfırlama).
   void deleteCoin(String coinId) {
     holdings.remove(coinId);
 

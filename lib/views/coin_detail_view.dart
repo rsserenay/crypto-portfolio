@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../controllers/coin_detail_controller.dart';
 import '../controllers/portfolio_controller.dart';
+import '../models/portfolio_holding.dart';
 import '../theme/app_colors.dart';
 import 'widgets/candlestick_chart.dart';
 import 'widgets/buy_sheet.dart';
@@ -258,8 +259,6 @@ class CoinDetailView extends StatelessWidget {
                         return const SizedBox.shrink();
                       }
 
-                      // BURASI DÜZELTİLDİ:
-                      // Artık Row -> Row -> Expanded yok.
                       return Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(left: 12),
@@ -305,6 +304,120 @@ class CoinDetailView extends StatelessWidget {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 28),
+
+              // --- PORTFÖYÜMDEKİ DURUM + İŞLEM GEÇMİŞİ ---
+              // holdings RxMap olduğu için Obx bu bloğu otomatik günceller:
+              // alım/satım yapıldığı anda burası da tazelenir.
+              Obx(() {
+                final portfolioController = Get.find<PortfolioController>();
+                final holding = portfolioController.holdings[coin.id];
+                final transactions =
+                    portfolioController.transactionsFor(coin.id);
+
+                final bool hasPosition =
+                    holding != null && holding.amount > 0;
+
+                if (holding == null && transactions.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                double investedUsd = 0;
+                double ownedValueUsd = 0;
+                double profitUsd = 0;
+                double profitPct = 0;
+
+                if (hasPosition) {
+                  ownedValueUsd = holding.amount * coin.currentPrice;
+                  investedUsd = holding.amount * holding.avgBuyPrice;
+                  profitUsd = ownedValueUsd - investedUsd;
+                  profitPct =
+                      investedUsd > 0 ? (profitUsd / investedUsd) * 100 : 0;
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (hasPosition) ...[
+                      const Text(
+                        'Portföyümdeki Durumum',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.divider),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _DetailRow(
+                              label: 'Sahip Olunan',
+                              value:
+                                  '${holding.amount.toStringAsFixed(6)} ${coin.symbol}',
+                            ),
+                            const SizedBox(height: 10),
+                            _DetailRow(
+                              label: 'Ortalama Alış Fiyatı',
+                              value:
+                                  '\$${holding.avgBuyPrice.toStringAsFixed(4)}',
+                            ),
+                            const SizedBox(height: 10),
+                            _DetailRow(
+                              label: 'Toplam Yatırılan',
+                              value: '\$${investedUsd.toStringAsFixed(2)}',
+                            ),
+                            const SizedBox(height: 10),
+                            _DetailRow(
+                              label: 'Şu An Satarsan (Güncel Değer)',
+                              value: '\$${ownedValueUsd.toStringAsFixed(2)}',
+                            ),
+                            const SizedBox(height: 10),
+                            _DetailRow(
+                              label: 'Kâr/Zarar',
+                              value: '${profitUsd >= 0 ? '+' : ''}'
+                                  '\$${profitUsd.toStringAsFixed(2)} '
+                                  '(${profitUsd >= 0 ? '+' : ''}${profitPct.toStringAsFixed(2)}%)',
+                              valueColor: profitUsd >= 0
+                                  ? AppColors.positive
+                                  : AppColors.negative,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    if (transactions.isNotEmpty) ...[
+                      const Text(
+                        'İşlem Geçmişi',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...transactions.map(
+                        (tx) => _TransactionTile(
+                          transaction: tx,
+                          symbol: coin.symbol,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              }),
+
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -358,6 +471,130 @@ class _StatBox extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Portföyümdeki Durumum" kartındaki etiket + değer satırı.
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// İşlem geçmişindeki tek bir alım/satım satırı.
+class _TransactionTile extends StatelessWidget {
+  final CoinTransaction transaction;
+  final String symbol;
+
+  const _TransactionTile({
+    required this.transaction,
+    required this.symbol,
+  });
+
+  String _formatDate(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(date.day)}.${two(date.month)}.${date.year}  '
+        '${two(date.hour)}:${two(date.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isBuy = transaction.isBuy;
+    final Color badgeColor = isBuy ? AppColors.positive : AppColors.negative;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              isBuy ? 'Alış' : 'Satış',
+              style: TextStyle(
+                color: badgeColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${transaction.amount.toStringAsFixed(6)} $symbol  •  '
+                  '\$${transaction.price.toStringAsFixed(4)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatDate(transaction.date),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '\$${transaction.totalValue.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

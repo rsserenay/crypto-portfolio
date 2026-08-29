@@ -3,13 +3,15 @@ import 'package:get/get.dart';
 import '../models/coin_model.dart';
 import '../services/coin_api_service.dart';
 import 'package:flutter/material.dart';
+import 'favorites_controller.dart';
 
-enum SortType { none, gainers, losers }
+enum SortType { none, gainers, losers, favorites }
 
 /// Market ekranının TÜM iş mantığı burada yaşar (Sıfır setState kuralı).
 /// View sadece Obx ile bu controller'ı dinler.
 class MarketController extends GetxController {
   final CoinApiService _apiService = CoinApiService();
+  final FavoritesController _favoritesController = Get.find<FavoritesController>();
 
   final RxList<CoinModel> allCoins = <CoinModel>[].obs;
 
@@ -32,11 +34,24 @@ class MarketController extends GetxController {
   static const Duration _debounceDuration = Duration(milliseconds: 500);
   static const Duration _autoRefreshDuration = Duration(seconds: 30);
 
+  late final Worker _favoritesWorker;
+
   @override
   void onInit() {
     super.onInit();
     fetchCoins();
     _startAutoRefresh();
+
+    // Favoriler değiştiğinde (ekle/çıkar) ve o an "Favoriler" filtresi
+    // aktifse listeyi anında güncelle.
+    _favoritesWorker = ever<Set<String>>(
+      _favoritesController.favoriteIds,
+      (_) {
+        if (activeSort.value == SortType.favorites) {
+          _applyFilterAndSort();
+        }
+      },
+    );
   }
 
   @override
@@ -46,6 +61,7 @@ class MarketController extends GetxController {
     _debounceTimer?.cancel();
     _autoRefreshTimer?.cancel();
     searchController.dispose();
+    _favoritesWorker.dispose();
     super.onClose();
   }
 
@@ -122,6 +138,12 @@ class MarketController extends GetxController {
     _applyFilterAndSort();
   }
 
+  /// Sadece yıldızlanmış (favori) coinleri gösterir.
+  void sortByFavorites() {
+    activeSort.value = SortType.favorites;
+    _applyFilterAndSort();
+  }
+
   /// Elde bulunan 100 coinlik listeyi Dart tarafında filtreler ve sıralar.
   void _applyFilterAndSort() {
     List<CoinModel> result = allCoins.toList();
@@ -143,6 +165,11 @@ class MarketController extends GetxController {
       case SortType.losers:
         result.sort((a, b) =>
             a.priceChangePercentage24h.compareTo(b.priceChangePercentage24h));
+        break;
+      case SortType.favorites:
+        result = result
+            .where((coin) => _favoritesController.isFavorite(coin.id))
+            .toList();
         break;
       case SortType.none:
         break;

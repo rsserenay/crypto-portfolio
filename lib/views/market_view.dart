@@ -108,6 +108,13 @@ class MarketView extends StatelessWidget {
                       selected: controller.activeSort.value == SortType.losers,
                       onTap: controller.sortByLosers,
                     ),
+                    const SizedBox(width: 8),
+                    _SortChip(
+                      label: '⭐ Favoriler',
+                      selected:
+                          controller.activeSort.value == SortType.favorites,
+                      onTap: controller.sortByFavorites,
+                    ),
                   ],
                 ),
               ),
@@ -151,11 +158,21 @@ class MarketView extends StatelessWidget {
 
               if (controller.displayedCoins.isEmpty) {
                 final query = controller.searchQuery.value;
+
+                String message;
+                if (query.isNotEmpty) {
+                  message = '"$query" için sonuç bulunamadı';
+                } else if (controller.activeSort.value ==
+                    SortType.favorites) {
+                  message = 'Henüz favori coin eklemediniz.\n'
+                      'Bir coinin yanındaki yıldıza dokunarak favorilere ekleyebilirsiniz.';
+                } else {
+                  message = 'Gösterilecek coin bulunamadı';
+                }
+
                 return Center(
                   child: Text(
-                    query.isNotEmpty
-                        ? '"$query" için sonuç bulunamadı'
-                        : 'Gösterilecek coin bulunamadı',
+                    message,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),

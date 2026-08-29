@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../models/coin_model.dart';
 import '../../theme/app_colors.dart';
+import '../../controllers/favorites_controller.dart';
 import 'sparkline_chart.dart';
 
-/// Saf UI widget'ı. İçinde hesaplama/filtreleme YOKTUR, sadece verilen
-/// CoinModel'i ekrana basar.
+/// Saf UI widget'ı. Hesaplama/filtreleme yapmaz, verilen CoinModel'i
+/// ekrana basar. Tek istisna: favori yıldızı, doğrudan FavoritesController'a
+/// yazan küçük bir kısayoldur (detay sayfasına girmeden yıldızlayabilmek için).
 class CoinTile extends StatelessWidget {
   final CoinModel coin;
   final VoidCallback onTap;
@@ -15,6 +18,8 @@ class CoinTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isUp = coin.priceChangePercentage24h >= 0;
     final Color changeColor = isUp ? AppColors.positive : AppColors.negative;
+    final FavoritesController favoritesController =
+        Get.find<FavoritesController>();
 
     return ListTile(
       onTap: onTap,
@@ -31,10 +36,25 @@ class CoinTile extends StatelessWidget {
       subtitle: Text(coin.symbol,
           style: const TextStyle(color: AppColors.textSecondary)),
       trailing: SizedBox(
-        width: 130,
+        width: 168,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
+            Obx(() {
+              final bool isFav = favoritesController.isFavorite(coin.id);
+              return IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  isFav ? Icons.star : Icons.star_border,
+                  size: 20,
+                  color:
+                      isFav ? AppColors.accentMint : AppColors.textSecondary,
+                ),
+                onPressed: () => favoritesController.toggleFavorite(coin.id),
+              );
+            }),
+            const SizedBox(width: 4),
             if (coin.sparklineData.length > 1)
               SizedBox(
                 width: 46,
