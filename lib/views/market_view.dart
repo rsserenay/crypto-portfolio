@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/market_controller.dart';
+import '../models/coin_model.dart';
 import '../theme/app_colors.dart';
 import 'widgets/coin_tile.dart';
 import 'coin_detail_view.dart';
@@ -54,6 +55,68 @@ class MarketView extends StatelessWidget {
       ),
       body: Column(
         children: [
+          // --- KÜRESEL PİYASA ÖZETİ: Toplam Piyasa Değeri / 24s Hacim / BTC Dominansı ---
+          Obx(() {
+            final data = controller.globalData.value;
+
+            if (data == null) {
+              return const SizedBox.shrink();
+            }
+
+            final bool isUp = data.marketCapChangePercentage24h >= 0;
+
+            return Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _GlobalStat(
+                      label: 'Piyasa Değeri',
+                      value: GlobalMarketData.formatCompact(
+                        data.totalMarketCapUsd,
+                      ),
+                      trailingBadge:
+                          '${isUp ? '+' : ''}${data.marketCapChangePercentage24h.toStringAsFixed(1)}%',
+                      badgeColor:
+                          isUp ? AppColors.positive : AppColors.negative,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 30,
+                    color: AppColors.divider,
+                  ),
+                  Expanded(
+                    child: _GlobalStat(
+                      label: '24s Hacim',
+                      value: GlobalMarketData.formatCompact(
+                        data.totalVolumeUsd,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 30,
+                    color: AppColors.divider,
+                  ),
+                  Expanded(
+                    child: _GlobalStat(
+                      label: 'BTC Dominansı',
+                      value: '${data.btcDominancePct.toStringAsFixed(1)}%',
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Obx(
@@ -114,6 +177,13 @@ class MarketView extends StatelessWidget {
                       selected:
                           controller.activeSort.value == SortType.favorites,
                       onTap: controller.sortByFavorites,
+                    ),
+                    const SizedBox(width: 8),
+                    _SortChip(
+                      label: '🔥 En Çok İşlem Gören',
+                      selected:
+                          controller.activeSort.value == SortType.volume,
+                      onTap: controller.sortByVolume,
                     ),
                   ],
                 ),
@@ -200,6 +270,68 @@ class MarketView extends StatelessWidget {
                 ),
               );
             }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Küresel piyasa özeti şeridindeki tek bir istatistik hücresi
+/// (etiket + değer, isteğe bağlı küçük bir renkli rozet).
+class _GlobalStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? trailingBadge;
+  final Color? badgeColor;
+
+  const _GlobalStat({
+    required this.label,
+    required this.value,
+    this.trailingBadge,
+    this.badgeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  value,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (trailingBadge != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  trailingBadge!,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: badgeColor ?? AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),

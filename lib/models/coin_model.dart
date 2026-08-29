@@ -1,3 +1,50 @@
+/// CoinGecko /global endpoint'inden dönen piyasa geneli özet verisi.
+/// Market ekranının en üstündeki özet şeritte gösterilir.
+class GlobalMarketData {
+  final double totalMarketCapUsd;
+  final double totalVolumeUsd;
+  final double btcDominancePct;
+  final double marketCapChangePercentage24h;
+
+  const GlobalMarketData({
+    required this.totalMarketCapUsd,
+    required this.totalVolumeUsd,
+    required this.btcDominancePct,
+    required this.marketCapChangePercentage24h,
+  });
+
+  factory GlobalMarketData.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>? ?? {};
+
+    final totalMarketCap = data['total_market_cap'] as Map<String, dynamic>?;
+    final totalVolume = data['total_volume'] as Map<String, dynamic>?;
+    final btcDominance = data['market_cap_percentage'] as Map<String, dynamic>?;
+
+    return GlobalMarketData(
+      totalMarketCapUsd:
+          ((totalMarketCap?['usd'] ?? 0) as num).toDouble(),
+      totalVolumeUsd: ((totalVolume?['usd'] ?? 0) as num).toDouble(),
+      btcDominancePct: ((btcDominance?['btc'] ?? 0) as num).toDouble(),
+      marketCapChangePercentage24h:
+          ((data['market_cap_change_percentage_24h_usd'] ?? 0) as num)
+              .toDouble(),
+    );
+  }
+
+  static String formatCompact(double value) {
+    if (value >= 1000000000000) {
+      return '\$${(value / 1000000000000).toStringAsFixed(2)}T';
+    }
+    if (value >= 1000000000) {
+      return '\$${(value / 1000000000).toStringAsFixed(2)}B';
+    }
+    if (value >= 1000000) {
+      return '\$${(value / 1000000).toStringAsFixed(2)}M';
+    }
+    return '\$${value.toStringAsFixed(0)}';
+  }
+}
+
 /// CoinGecko /coins/markets endpoint'inden dönen tek bir coin kaydını temsil eder.
 class CoinModel {
   final String id;

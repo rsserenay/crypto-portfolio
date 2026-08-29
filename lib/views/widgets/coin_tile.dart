@@ -39,22 +39,8 @@ class CoinTile extends StatelessWidget {
         width: 168,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Obx(() {
-              final bool isFav = favoritesController.isFavorite(coin.id);
-              return IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: Icon(
-                  isFav ? Icons.star : Icons.star_border,
-                  size: 20,
-                  color:
-                      isFav ? AppColors.accentMint : AppColors.textSecondary,
-                ),
-                onPressed: () => favoritesController.toggleFavorite(coin.id),
-              );
-            }),
-            const SizedBox(width: 4),
             if (coin.sparklineData.length > 1)
               SizedBox(
                 width: 46,
@@ -84,6 +70,22 @@ class CoinTile extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(width: 6),
+            // Yıldız, en sağda ve grafikle aynı hizada duracak şekilde en sonda.
+            Obx(() {
+              final bool isFav = favoritesController.isFavorite(coin.id);
+              return IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  isFav ? Icons.star : Icons.star_border,
+                  size: 20,
+                  color:
+                      isFav ? AppColors.accentMint : AppColors.textSecondary,
+                ),
+                onPressed: () => favoritesController.toggleFavorite(coin.id),
+              );
+            }),
           ],
         ),
       ),

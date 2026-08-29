@@ -27,7 +27,7 @@ class AppColors {
 
   // --- Durum Renkleri (accentMint'ten türetilen pozitif + fonksiyonel negatif) ---
   static const Color positive = Color(0xFF2FB897); // accentMint'in koyu/okunabilir tonu
-  static const Color positiveSoft = accentMint;
+  static const Color positiveSoft = Color.fromARGB(255, 113, 230, 216);
   static const Color negative = Color(0xFFE5484D);
   static const Color negativeSoft = Color(0xFFFBD5D5);
 

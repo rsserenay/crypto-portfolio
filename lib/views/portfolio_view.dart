@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/market_controller.dart';
@@ -366,91 +368,170 @@ class _AllocationSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.divider),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Yığın çubuk: her coin, payı oranında bir segment kaplar.
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                height: 14,
-                child: Row(
-                  children: List.generate(sorted.length, (i) {
-                    final ratio = sorted[i].valueUsd / totalUsd;
-                    return Expanded(
-                      // flex tam sayı olmalı; oranı 1000 üzerinden ölçekliyoruz.
-                      flex: (ratio * 1000).round().clamp(1, 1000),
-                      child: Container(
-                        color: _palette[i % _palette.length],
-                      ),
-                    );
-                  }),
-                ),
+            _DonutChart(
+              items: sorted,
+              totalUsd: totalUsd,
+              palette: _palette,
+            ),
+            const SizedBox(width: 20),
+            // Coin bazlı yüzdelik liste (sağ taraf, kalan alanı kaplar).
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: List.generate(sorted.length, (i) {
+                  final item = sorted[i];
+                  final pct = (item.valueUsd / totalUsd) * 100;
+
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: i == sorted.length - 1 ? 0 : 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: _palette[i % _palette.length],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item.coin.symbol,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${pct.toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // Coin bazlı yüzdelik liste.
-            ...List.generate(sorted.length, (i) {
-              final item = sorted[i];
-              final pct = (item.valueUsd / totalUsd) * 100;
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: i == sorted.length - 1 ? 0 : 10,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: _palette[i % _palette.length],
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${item.coin.name} (${item.coin.symbol})',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '\$${item.valueUsd.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 48,
-                      child: Text(
-                        '${pct.toStringAsFixed(1)}%',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
           ],
         ),
       ),
     );
+  }
+}
+
+/// Ek bir grafik paketi kullanmadan, CustomPainter ile çizilen basit bir
+/// halka (donut) grafiği. Ortasında toplam bakiyeyi gösterir.
+class _DonutChart extends StatelessWidget {
+  final List<PortfolioItem> items;
+  final double totalUsd;
+  final List<Color> palette;
+
+  const _DonutChart({
+    required this.items,
+    required this.totalUsd,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ratios = items
+        .map((e) => totalUsd > 0 ? e.valueUsd / totalUsd : 0.0)
+        .toList();
+
+    return SizedBox(
+      width: 128,
+      height: 128,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(128, 128),
+            painter: _DonutChartPainter(
+              ratios: ratios,
+              colors: palette,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Toplam',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '\$${totalUsd.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DonutChartPainter extends CustomPainter {
+  final List<double> ratios;
+  final List<Color> colors;
+  final double strokeWidth;
+
+  _DonutChartPainter({
+    required this.ratios,
+    required this.colors,
+    this.strokeWidth = 20,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(
+      strokeWidth / 2,
+      strokeWidth / 2,
+      size.width - strokeWidth,
+      size.height - strokeWidth,
+    );
+
+    // Saat 12 yönünden (yukarıdan) başlayıp saat yönünde ilerliyoruz.
+    double startAngle = -pi / 2;
+
+    for (int i = 0; i < ratios.length; i++) {
+      // Çok küçük dilimlerin görünür olması için minik bir alt sınır koyuyoruz.
+      final sweepAngle = (ratios[i] * 2 * pi).clamp(0.0, 2 * pi);
+
+      final paint = Paint()
+        ..color = colors[i % colors.length]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.butt;
+
+      canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
+      startAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutChartPainter oldDelegate) {
+    return oldDelegate.ratios != ratios || oldDelegate.colors != colors;
   }
 }
 

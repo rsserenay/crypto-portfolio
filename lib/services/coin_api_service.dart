@@ -24,6 +24,20 @@ class CoinApiService {
     }
   }
 
+  /// Piyasa geneli özet verisi (toplam piyasa değeri, hacim, BTC dominansı).
+  Future<GlobalMarketData> fetchGlobalData() async {
+    final uri = Uri.parse('$_baseUrl/global');
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return GlobalMarketData.fromJson(data);
+    } else {
+      throw Exception('CoinGecko Global API hatası: ${response.statusCode}');
+    }
+  }
+
   /// Belirli bir coin için OHLC (mum) verisini çeker.
   /// [days]: CoinGecko ücretsiz planda desteklenen değerler: 1, 7, 14, 30, 90, 180, 365, max
   Future<List<CandleModel>> fetchOhlc(String coinId, int days) async {

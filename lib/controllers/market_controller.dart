@@ -5,7 +5,7 @@ import '../services/coin_api_service.dart';
 import 'package:flutter/material.dart';
 import 'favorites_controller.dart';
 
-enum SortType { none, gainers, losers, favorites }
+enum SortType { none, gainers, losers, favorites, volume }
 
 /// Market ekranının TÜM iş mantığı burada yaşar (Sıfır setState kuralı).
 /// View sadece Obx ile bu controller'ı dinler.
@@ -24,6 +24,10 @@ class MarketController extends GetxController {
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
 
+  // Piyasa geneli özet verisi (Toplam Piyasa Değeri, 24s Hacim, BTC Dominansı)
+  final Rx<GlobalMarketData?> globalData = Rx<GlobalMarketData?>(null);
+  final RxBool isGlobalDataLoading = false.obs;
+
   final RxString searchQuery = ''.obs;
   final Rx<SortType> activeSort = SortType.none.obs;
   final TextEditingController searchController = TextEditingController();
@@ -40,6 +44,7 @@ class MarketController extends GetxController {
   void onInit() {
     super.onInit();
     fetchCoins();
+    _fetchGlobalData();
     _startAutoRefresh();
 
     // Favoriler değiştiğinde (ekle/çıkar) ve o an "Favoriler" filtresi
@@ -106,10 +111,26 @@ class MarketController extends GetxController {
     await fetchCoins();
   }
 
+  /// Piyasa geneli özet verisini çeker. Sessiz başarısız olur (hata varsa
+  /// üst şerit sadece gösterilmez, uygulamanın geri kalanını etkilemez).
+  Future<void> _fetchGlobalData() async {
+    try {
+      isGlobalDataLoading.value = true;
+      globalData.value = await _apiService.fetchGlobalData();
+    } catch (_) {
+      // Global özet, opsiyonel bir bilgi olduğu için sessizce yutuyoruz.
+    } finally {
+      isGlobalDataLoading.value = false;
+    }
+  }
+
   /// RefreshIndicator tarafından çağrılır (manuel pull-to-refresh)
   Future<void> onPullToRefresh() async {
     isRefreshing.value = true;
-    await fetchCoins(silent: true);
+    await Future.wait([
+      fetchCoins(silent: true),
+      _fetchGlobalData(),
+    ]);
     isRefreshing.value = false;
   }
 
@@ -144,6 +165,12 @@ class MarketController extends GetxController {
     _applyFilterAndSort();
   }
 
+  /// En çok işlem gören (24s hacmi en yüksek) coinleri başa alır.
+  void sortByVolume() {
+    activeSort.value = SortType.volume;
+    _applyFilterAndSort();
+  }
+
   /// Elde bulunan 100 coinlik listeyi Dart tarafında filtreler ve sıralar.
   void _applyFilterAndSort() {
     List<CoinModel> result = allCoins.toList();
@@ -170,6 +197,9 @@ class MarketController extends GetxController {
         result = result
             .where((coin) => _favoritesController.isFavorite(coin.id))
             .toList();
+        break;
+      case SortType.volume:
+        result.sort((a, b) => b.totalVolume.compareTo(a.totalVolume));
         break;
       case SortType.none:
         break;
